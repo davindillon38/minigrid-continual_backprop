@@ -64,6 +64,16 @@ Based on:
 Dohare et al. (2024). Loss of Plasticity in Deep Continual Learning. Nature.
 ```
 
+## Acknowledgments
+
+Base code adapted from [rl-starter-files](https://github.com/lcswillems/rl-starter-files) by lcswillems.
+
+Continual backpropagation method from:
+```
+Dohare et al. (2024). Loss of Plasticity in Deep Continual Learning. Nature.
+```
+
+
 ## Repository Structure
 
 ```
