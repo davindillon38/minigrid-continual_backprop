@@ -1,0 +1,31 @@
+
+
+python -m scripts.train --algo ppo --env MiniGrid-DoorKey-8x8-v0 --model DoorKey8x8_cb2 --frames 2000000 --save-interval 50 --continual-backprop
+
+
+# Next 3 multi-stage with CB change numbers with next run
+
+python -m scripts.train --algo ppo --env MiniGrid-DoorKey-5x5-v0 --model multistage_cb --frames 500000 --save-interval 25 --continual-backprop
+
+python -m scripts.train --algo ppo --env MiniGrid-DoorKey-6x6-v0 --model multistage_cb --frames 1000000 --save-interval 25 --continual-backprop
+
+python -m scripts.train --algo ppo --env MiniGrid-DoorKey-8x8-v0 --model multistage_cb --frames 2000000 --save-interval 50 --continual-backprop
+
+# Multi-stage without CB
+
+python -m scripts.train --algo ppo --env MiniGrid-DoorKey-5x5-v0 --model multistage_baseline2 --frames 500000 --save-interval 25
+
+python -m scripts.train --algo ppo --env MiniGrid-DoorKey-6x6-v0 --model multistage_baseline2 --frames 1000000 --save-interval 25
+
+python -m scripts.train --algo ppo --env MiniGrid-DoorKey-8x8-v0 --model multistage_baseline2 --frames 2000000 --save-interval 50
+
+
+python -m scripts.evaluate --env MiniGrid-DoorKey-8x8-v0 --model DoorKey8x8_cb --episodes 100
+
+python -m scripts.evaluate --env MiniGrid-DoorKey-6x6-v0 --model DoorKey8x8_cb --episodes 100
+
+python -m scripts.evaluate --env MiniGrid-DoorKey-16x16-v0 --model DoorKey8x8_cb --episodes 100
+
+
+
+
