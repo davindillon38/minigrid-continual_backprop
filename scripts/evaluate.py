@@ -5,6 +5,11 @@ from torch_ac.utils.penv import ParallelEnv
 
 import utils
 from utils import device
+import custom_envs
+
+import ale_py
+import gymnasium as gym
+gym.register_envs(ale_py)
 
 
 # Parse arguments
@@ -42,12 +47,22 @@ if __name__ == "__main__":
 
     # Load environments
 
+    is_atari = args.env.startswith('ALE/')
     envs = []
     for i in range(args.procs):
         env = utils.make_env(args.env, args.seed + 10000 * i)
+        if is_atari:
+            from utils.atari_wrappers import AtariPreprocessing
+            env = AtariPreprocessing(env)
         envs.append(env)
     env = ParallelEnv(envs)
     print("Environments loaded\n")
+
+    # Get obs_space from a wrapped env, not ParallelEnv
+    if is_atari:
+        obs_space = envs[0].observation_space
+    else:
+        obs_space = env.observation_space
 
     # Load agent
 

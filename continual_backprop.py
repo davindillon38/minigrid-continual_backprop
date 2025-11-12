@@ -7,7 +7,7 @@ class ContinualBackprop:
     """
 
     def __init__(self, model, optimizer, 
-                 replacement_rate=1e-4, decay_rate=0.99,
+                 replacement_rate=1e-5, decay_rate=0.99,
                  maturity_threshold=100, device='cpu'):
         self.model = model
         self.optimizer = optimizer

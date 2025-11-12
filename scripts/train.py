@@ -8,7 +8,17 @@ import sys
 import utils
 from utils import device
 from model import ACModel
+from model_atari import AtariACModel
 from continual_backprop import ContinualBackprop
+from exploration import CountBasedExploration
+import custom_envs
+from utils.atari_wrappers import AtariPreprocessing
+
+# Register ALE environments
+import ale_py
+import gymnasium as gym
+gym.register_envs(ale_py)
+
 
 # Parse arguments
 
@@ -63,6 +73,9 @@ parser.add_argument("--text", action="store_true", default=False,
                     help="add a GRU to the model to handle text input")
 parser.add_argument("--continual-backprop", action="store_true", default=False,
                     help="use continual backpropagation to maintain plasticity")
+parser.add_argument("--exploration", action="store_true", default=False,
+                    help="use count-based exploration bonus")
+
 if __name__ == "__main__":
     args = parser.parse_args()
 
@@ -96,10 +109,13 @@ if __name__ == "__main__":
     txt_logger.info(f"Device: {device}\n")
 
     # Load environments
-
+    is_atari = args.env.startswith('ALE/')
     envs = []
     for i in range(args.procs):
-        envs.append(utils.make_env(args.env, args.seed + 10000 * i))
+        env = utils.make_env(args.env, args.seed + 10000 * i)
+        if is_atari:
+            env = AtariPreprocessing(env)  # Wrap with preprocessing
+        envs.append(env)
     txt_logger.info("Environments loaded\n")
 
     # Load training status
@@ -111,18 +127,20 @@ if __name__ == "__main__":
     txt_logger.info("Training status loaded\n")
 
     # Load observations preprocessor
-
-    obs_space, preprocess_obss = utils.get_obss_preprocessor(envs[0].observation_space)
-    if "vocab" in status:
-        preprocess_obss.vocab.load_vocab(status["vocab"])
+    if is_atari:
+        obs_space = envs[0].observation_space
+        preprocess_obss = None  # Atari doesn't need dict preprocessing
+    else:
+        obs_space, preprocess_obss = utils.get_obss_preprocessor(envs[0].observation_space)
+        if "vocab" in status:
+            preprocess_obss.vocab.load_vocab(status["vocab"])
     txt_logger.info("Observations preprocessor loaded")
 
     # Load model
-
-    acmodel = ACModel(obs_space, envs[0].action_space, args.mem, args.text)
-    if "model_state" in status:
-        acmodel.load_state_dict(status["model_state"])
-    acmodel.to(device)
+    if is_atari:
+        acmodel = AtariACModel(envs[0].action_space, args.mem)
+    else:
+        acmodel = ACModel(obs_space, envs[0].action_space, args.mem, args.text)
 
     cb_wrapper = None
     if args.continual_backprop:
@@ -143,6 +161,9 @@ if __name__ == "__main__":
     else:
         raise ValueError("Incorrect algorithm name: {}".format(args.algo))
 
+    exploration = CountBasedExploration(bonus_coef=0.01) if args.exploration else None
+
+
     if "optimizer_state" in status:
         algo.optimizer.load_state_dict(status["optimizer_state"])
     txt_logger.info("Optimizer loaded\n")
@@ -160,6 +181,12 @@ if __name__ == "__main__":
         # Update model parameters
         update_start_time = time.time()
         exps, logs1 = algo.collect_experiences()
+        if exploration:
+            num_experiences = len(exps.reward)
+            for i in range(num_experiences):
+                obs = {key: val[i] for key, val in exps.obs.items()}
+                bonus = exploration.get_bonus(obs)
+                exps.reward[i] += bonus
         logs2 = algo.update_parameters(exps)
         if cb_wrapper:
             cb_wrapper.step()

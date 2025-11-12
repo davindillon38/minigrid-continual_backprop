@@ -3,6 +3,7 @@ import torch
 import utils
 from .other import device
 from model import ACModel
+from model_atari import AtariACModel
 
 
 class Agent:
@@ -14,8 +15,17 @@ class Agent:
 
     def __init__(self, obs_space, action_space, model_dir,
                  argmax=False, num_envs=1, use_memory=False, use_text=False):
-        obs_space, self.preprocess_obss = utils.get_obss_preprocessor(obs_space)
-        self.acmodel = ACModel(obs_space, action_space, use_memory=use_memory, use_text=use_text)
+        
+        # Detect if Atari (Box space instead of Dict)
+        is_atari = hasattr(obs_space, 'shape') and len(obs_space.shape) == 3
+        
+        if is_atari:
+            self.preprocess_obss = None
+            self.acmodel = AtariACModel(action_space, use_memory=use_memory)
+        else:
+            obs_space, self.preprocess_obss = utils.get_obss_preprocessor(obs_space)
+            self.acmodel = ACModel(obs_space, action_space, use_memory=use_memory, use_text=use_text)
+        
         self.argmax = argmax
         self.num_envs = num_envs
 
@@ -25,12 +35,18 @@ class Agent:
         self.acmodel.load_state_dict(utils.get_model_state(model_dir))
         self.acmodel.to(device)
         self.acmodel.eval()
-        if hasattr(self.preprocess_obss, "vocab"):
+        if self.preprocess_obss and hasattr(self.preprocess_obss, "vocab"):
             self.preprocess_obss.vocab.load_vocab(utils.get_vocab(model_dir))
 
     def get_actions(self, obss):
-        preprocessed_obss = self.preprocess_obss(obss, device=device)
-
+        if self.preprocess_obss:
+            preprocessed_obss = self.preprocess_obss(obss, device=device)
+    def get_actions(self, obss):
+        if self.preprocess_obss:
+            preprocessed_obss = self.preprocess_obss(obss, device=device)
+        else:
+            import numpy as np
+            preprocessed_obss = torch.from_numpy(np.stack(obss)).float().to(device)
         with torch.no_grad():
             if self.acmodel.recurrent:
                 dist, _, self.memories = self.acmodel(preprocessed_obss, self.memories)
@@ -43,6 +59,7 @@ class Agent:
             actions = dist.sample()
 
         return actions.cpu().numpy()
+
 
     def get_action(self, obs):
         return self.get_actions([obs])[0]
