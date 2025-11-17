@@ -57,6 +57,8 @@ parser.add_argument("--gae-lambda", type=float, default=0.95,
                     help="lambda coefficient in GAE formula (default: 0.95, 1 means no gae)")
 parser.add_argument("--entropy-coef", type=float, default=0.01,
                     help="entropy term coefficient (default: 0.01)")
+parser.add_argument("--save-viz-data", action="store_true", default=False,
+                    help="save visualization data for graphics project")
 parser.add_argument("--value-loss-coef", type=float, default=0.5,
                     help="value loss term coefficient (default: 0.5)")
 parser.add_argument("--max-grad-norm", type=float, default=0.5,
@@ -147,6 +149,20 @@ if __name__ == "__main__":
         cb_wrapper = ContinualBackprop(acmodel, None, device=device)
     txt_logger.info("Model loaded\n")
     txt_logger.info("{}\n".format(acmodel))
+
+    if cb_wrapper and args.save_viz_data and update % 10 == 0:  # Save every 10 updates
+        viz_data = {
+            'update': update,
+            'util': [u.cpu().numpy() for u in cb_wrapper.util],
+            'ages': [a.cpu().numpy() for a in cb_wrapper.ages],
+            'weights': [(layer.weight.data.cpu().numpy(), layer.bias.data.cpu().numpy()) 
+                        for layer in cb_wrapper.layers]
+        }
+        import pickle
+        with open(f'{model_dir}/viz_data_{update:06d}.pkl', 'wb') as f:
+            pickle.dump(viz_data, f)
+
+
 
     # Load algo
 
