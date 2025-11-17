@@ -199,17 +199,17 @@ if __name__ == "__main__":
         num_frames += logs["num_frames"]
         update += 1
 
-    if cb_wrapper and args.save_viz_data and update % 10 == 0:  # Save every 10 updates
-        viz_data = {
-            'update': update,
-            'util': [u.cpu().numpy() for u in cb_wrapper.util],
-            'ages': [a.cpu().numpy() for a in cb_wrapper.ages],
-            'weights': [(layer.weight.data.cpu().numpy(), layer.bias.data.cpu().numpy()) 
-                        for layer in cb_wrapper.layers]
-        }
-        import pickle
-        with open(f'{model_dir}/viz_data_{update:06d}.pkl', 'wb') as f:
-            pickle.dump(viz_data, f)
+        if cb_wrapper and args.save_viz_data and update % 10 == 0:  # Save every 10 updates
+            viz_data = {
+                'update': update,
+                'util': [u.cpu().numpy() for u in cb_wrapper.util],
+                'ages': [a.cpu().numpy() for a in cb_wrapper.ages],
+                'weights': [(layer.weight.data.cpu().numpy(), layer.bias.data.cpu().numpy()) 
+                            for layer in cb_wrapper.layers]
+            }
+            import pickle
+            with open(f'{model_dir}/viz_data_{update:06d}.pkl', 'wb') as f:
+                pickle.dump(viz_data, f)
 
 
 
